@@ -1,10 +1,10 @@
-package com.example.helloworld;
+package com.pge.mcpserver;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class HelloWorldRestApplicationTests {
+class McpServerApplicationTests {
 
 	@Test
 	void contextLoads() {

@@ -8,10 +8,10 @@
 		<version>4.1.2</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.example</groupId>
-	<artifactId>hello-world-rest</artifactId>
+	<groupId>com.pge</groupId>
+	<artifactId>mcp-server</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>hello-world-rest</name>
+	<name>mcp-server</name>
 	<description/>
 	<url/>
 	<licenses>

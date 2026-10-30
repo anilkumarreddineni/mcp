@@ -1,13 +1,13 @@
-package com.example.helloworld;
+package com.pge.mcpserver;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class HelloWorldRestApplication {
+public class McpServerApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(HelloWorldRestApplication.class, args);
+		SpringApplication.run(McpServerApplication.class, args);
 	}
 
 }

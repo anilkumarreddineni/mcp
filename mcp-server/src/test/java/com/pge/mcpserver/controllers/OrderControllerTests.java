@@ -19,6 +19,17 @@ class OrderControllerTests {
 	private MockMvc mockMvc;
 
 	@Test
+	void getAllReturnsAllOrdersSortedById() throws Exception {
+		this.mockMvc.perform(get("/orders"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.length()").value(5))
+			.andExpect(jsonPath("$[0].orderId").value("1001"))
+			.andExpect(jsonPath("$[0].status").value("PENDING"))
+			.andExpect(jsonPath("$[4].orderId").value("1005"))
+			.andExpect(jsonPath("$[4].status").value("CANCELLED"));
+	}
+
+	@Test
 	void getStatusReturnsStatusForKnownOrder() throws Exception {
 		this.mockMvc.perform(get("/orders/1003/status"))
 			.andExpect(status().isOk())

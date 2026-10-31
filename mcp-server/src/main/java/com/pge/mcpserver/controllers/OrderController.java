@@ -1,5 +1,7 @@
 package com.pge.mcpserver.controllers;
 
+import java.util.List;
+
 import com.pge.mcpserver.model.OrderStatusResponse;
 import com.pge.mcpserver.services.OrderService;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,15 @@ public class OrderController {
 
 	public OrderController(OrderService orderService) {
 		this.orderService = orderService;
+	}
+
+	@GetMapping("/orders")
+	public List<OrderStatusResponse> getAll() {
+		return this.orderService.findAll()
+			.entrySet()
+			.stream()
+			.map((entry) -> new OrderStatusResponse(entry.getKey(), entry.getValue()))
+			.toList();
 	}
 
 	@GetMapping("/orders/{orderId}/status")

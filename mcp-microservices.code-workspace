@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{ "path": "mcp-server" },
+		{ "path": "order-service" },
+		{ "name": "mcp (root)", "path": "." }
+	],
+	"settings": {
+		"java.configuration.updateBuildConfiguration": "automatic",
+		"files.exclude": {
+			"**/target": true
+		}
+	}
+}

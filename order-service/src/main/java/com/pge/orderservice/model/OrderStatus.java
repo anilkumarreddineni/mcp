@@ -1,4 +1,4 @@
-package com.pge.mcpserver.model;
+package com.pge.orderservice.model;
 
 public enum OrderStatus {
 

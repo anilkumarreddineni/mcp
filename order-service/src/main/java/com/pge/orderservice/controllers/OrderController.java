@@ -1,9 +1,9 @@
-package com.pge.mcpserver.controllers;
+package com.pge.orderservice.controllers;
 
 import java.util.List;
 
-import com.pge.mcpserver.model.OrderStatusResponse;
-import com.pge.mcpserver.services.OrderService;
+import com.pge.orderservice.model.OrderStatusResponse;
+import com.pge.orderservice.services.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

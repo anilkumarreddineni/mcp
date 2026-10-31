@@ -1,11 +1,11 @@
-package com.pge.mcpserver.services;
+package com.pge.orderservice.services;
 
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import com.pge.mcpserver.model.OrderStatus;
+import com.pge.orderservice.model.OrderStatus;
 import org.springframework.stereotype.Service;
 
 @Service

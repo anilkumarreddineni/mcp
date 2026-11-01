@@ -2,6 +2,7 @@
 	"folders": [
 		{ "path": "mcp-server" },
 		{ "path": "order-service" },
+		{ "path": "chat-app" },
 		{ "name": "mcp (root)", "path": "." }
 	],
 	"settings": {

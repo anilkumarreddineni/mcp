@@ -6,17 +6,44 @@ Spring Boot services (Java 17).
 |-----------------|------|-----------------------------------------------------------------|
 | `mcp-server`    | 8080 | `GET /hello`, MCP (Streamable HTTP) at `/mcp`                   |
 | `order-service` | 8081 | `GET /orders`, `GET /orders/{orderId}/status`                   |
+| `chat-app`      | 8082 | Chat UI at `/`, `POST /api/chat`                                |
 
 ## Run locally
 
-Start each service from its own directory:
+`chat-app` calls Claude, so set your Anthropic API key first. Never commit it.
+
+```sh
+export ANTHROPIC_API_KEY=sk-ant-...            # PowerShell: $env:ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+Start each service from its own directory, in this order:
 
 ```sh
 cd order-service && ./mvnw spring-boot:run
 cd mcp-server && ./mvnw spring-boot:run
+cd chat-app && ./mvnw spring-boot:run
 ```
 
-Run tests with `./mvnw test` in either directory.
+Then open http://localhost:8082 and ask, for example, "What's the status of order 1003?".
+
+Run tests with `./mvnw test` in any service directory. They don't need an API key.
+
+## Chat app
+
+`chat-app` uses Spring AI's `ChatClient` with Claude and connects to `mcp-server` as an MCP client, so Claude answers order questions by calling the MCP tools below. Each browser session keeps its own conversation history in memory, so follow-up questions such as "and order 1004?" work.
+
+| Environment variable | Default                 | Purpose                    |
+|----------------------|-------------------------|----------------------------|
+| `ANTHROPIC_API_KEY`  | none (required)         | Claude API key             |
+| `ANTHROPIC_MODEL`    | `claude-haiku-5-5`      | Claude model to use        |
+| `MCP_SERVER_URL`     | `http://localhost:8080` | Where `mcp-server` runs    |
+
+`chat-app` logs to the console and to `chat-app/logs/chat-app.log`, which is git-ignored. For every Claude API call it logs:
+
+- the endpoint, HTTP status and duration, e.g. `<-- 200 POST https://api.anthropic.com/v1/messages (755 ms)`. The API key is never logged.
+- the request and response content: messages, tool calls, tool results and token usage. This includes what users type. To turn it off, set `logging.level.org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor=INFO` in `chat-app/src/main/resources/application.properties`.
+
+`chat-app` starts even when `mcp-server` is down, and connects on the first chat message. If `mcp-server` or the Claude API can't be reached, the chat shows a friendly error and the details go to the `chat-app` log.
 
 ## MCP tools
 

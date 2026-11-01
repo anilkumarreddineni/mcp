@@ -5,8 +5,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import com.pge.mcpserver.model.OrderStatusResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
@@ -15,9 +14,8 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 @Component
+@Slf4j
 public class OrderServiceClient {
-
-	private static final Logger logger = LoggerFactory.getLogger(OrderServiceClient.class);
 
 	private final RestClient restClient;
 
@@ -56,7 +54,7 @@ public class OrderServiceClient {
 		catch (ResourceAccessException ex) {
 			// Log the cause here: MCP tool errors show the root cause's message, which is
 			// often null for connection failures
-			logger.warn("Order service call to {} failed", this.baseUrl, ex);
+			log.warn("Order service call to {} failed", this.baseUrl, ex);
 			throw new OrderServiceUnavailableException(this.baseUrl);
 		}
 	}

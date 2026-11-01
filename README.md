@@ -28,6 +28,8 @@ Then open http://localhost:8082 and ask, for example, "What's the status of orde
 
 Run tests with `./mvnw test` in any service directory. They don't need an API key.
 
+All services use [Lombok](https://projectlombok.org/) (`@RequiredArgsConstructor` for constructor injection). Maven needs no setup. VS Code's Java extension supports Lombok out of the box. In IntelliJ, enable annotation processing.
+
 ## Chat app
 
 `chat-app` uses Spring AI's `ChatClient` with Claude and connects to `mcp-server` as an MCP client, so Claude answers order questions by calling the MCP tools below. Each browser session keeps its own conversation history in memory, so follow-up questions such as "and order 1004?" work.

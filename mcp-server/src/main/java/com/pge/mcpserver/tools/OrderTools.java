@@ -4,19 +4,17 @@ import java.util.List;
 
 import com.pge.mcpserver.clients.OrderServiceClient;
 import com.pge.mcpserver.model.OrderStatusResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpTool.McpAnnotations;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class OrderTools {
 
 	private final OrderServiceClient orderServiceClient;
-
-	public OrderTools(OrderServiceClient orderServiceClient) {
-		this.orderServiceClient = orderServiceClient;
-	}
 
 	@McpTool(name = "listOrders",
 			description = "List all orders with their current status (PENDING, PROCESSING, SHIPPED, DELIVERED or CANCELLED). "

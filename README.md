@@ -8,6 +8,8 @@ Spring Boot services (Java 17).
 | `order-service` | 8081 | `GET /orders`, `GET /orders/{orderId}/status`                   |
 | `chat-app`      | 8082 | Chat UI at `/`, `POST /api/chat`                                |
 
+`python-llm-client` is a separate Python command-line chat with Claude. It doesn't use the services above. See [python-llm-client/README.md](python-llm-client/README.md).
+
 ## Run locally
 
 `chat-app` calls Claude, so set your Anthropic API key first. Never commit it.

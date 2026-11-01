@@ -3,6 +3,7 @@
 		{ "path": "mcp-server" },
 		{ "path": "order-service" },
 		{ "path": "chat-app" },
+		{ "path": "python-llm-client" },
 		{ "name": "mcp (root)", "path": "." }
 	],
 	"settings": {

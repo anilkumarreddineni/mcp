@@ -10,6 +10,8 @@ Spring Boot services (Java 17).
 
 `python-llm-client` is a separate Python command-line chat with Claude. It doesn't use the services above. See [python-llm-client/README.md](python-llm-client/README.md).
 
+`python-llm-learning` is a step-by-step tutorial from "Hello, world" in Python to a first call to Claude. See [python-llm-learning/README.md](python-llm-learning/README.md).
+
 ## Run locally
 
 `chat-app` calls Claude, so set your Anthropic API key first. Never commit it.

@@ -33,7 +33,8 @@ public class ChatClientConfig {
 		// the requests that return tool results to Claude
 		return builder.defaultSystem(SYSTEM_PROMPT)
 			.defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build(),
-					ToolCallingAdvisor.builder().build(), SimpleLoggerAdvisor.builder().build())
+					ToolCallingAdvisor.builder().build(),
+					SimpleLoggerAdvisor.builder().requestToString(ChatRequestLogFormatter::format).build())
 			.defaultTools(mcpTools)
 			.build();
 	}

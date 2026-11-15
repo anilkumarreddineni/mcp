@@ -2,6 +2,8 @@
 
 Spring Boot services (Java 17).
 
+Architecture diagram: https://claude.ai/artifact/KjMkfbcErEZ4qChynaV9tm (shows how the services connect and the path one chat question takes through them).
+
 | Service         | Port | Endpoints                                                       |
 |-----------------|------|-----------------------------------------------------------------|
 | `mcp-server`    | 8080 | `GET /hello`, MCP (Streamable HTTP) at `/mcp`                   |

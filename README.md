@@ -8,8 +8,6 @@ Spring Boot services (Java 17).
 | `order-service` | 8081 | `GET /orders`, `GET /orders/{orderId}/status`                   |
 | `chat-app`      | 8082 | Chat UI at `/`, `POST /api/chat`                                |
 
-`python-llm-learning` is a step-by-step tutorial from "Hello, world" in Python to a first call to Claude. See [python-llm-learning/README.md](python-llm-learning/README.md).
-
 ## Run locally
 
 `chat-app` calls Claude, so set your Anthropic API key first. Never commit it.
@@ -25,6 +23,8 @@ cd order-service && ./mvnw spring-boot:run
 cd mcp-server && ./mvnw spring-boot:run
 cd chat-app && ./mvnw spring-boot:run
 ```
+
+On Windows, `start-all.bat` does this for you. It opens one window per service, waits for each service to answer before it starts the next, and then opens the chat UI. To stop a service, close its window.
 
 Then open http://localhost:8082 and ask, for example, "What's the status of order 1003?".
 

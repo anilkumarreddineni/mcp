@@ -1,15 +1,15 @@
 {
 	"folders": [
+		{ "name": "mcp (root)", "path": "." },
 		{ "path": "mcp-server" },
 		{ "path": "order-service" },
-		{ "path": "chat-app" },
-		{ "path": "python-llm-client" },
-		{ "name": "mcp (root)", "path": "." }
+		{ "path": "chat-app" }
 	],
 	"settings": {
 		"java.configuration.updateBuildConfiguration": "automatic",
 		"files.exclude": {
 			"**/target": true
-		}
+		},
+		"java.compile.nullAnalysis.mode": "disabled"
 	}
 }

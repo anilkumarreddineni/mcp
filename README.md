@@ -2,7 +2,9 @@
 
 Spring Boot services (Java 17).
 
-Architecture diagram: https://claude.ai/artifact/KjMkfbcErEZ4qChynaV9tm (shows how the services connect and the path one chat question takes through them).
+Architecture diagram: [architecture.html](architecture.html) (open it in a browser), also online at https://claude.ai/artifact/KjMkfbcErEZ4qChynaV9tm. It shows how the services connect and the path one chat question takes through them.
+
+Tool calling diagram: [tool-calling.html](tool-calling.html), also online at https://claude.ai/artifact/R7BhjwaDELxBdibwtaZpNe. It shows how Claude learns about the MCP tools, the two Claude requests behind one order question, and what SYSTEM, USER, ASSISTANT and TOOL mean in the log.
 
 | Service         | Port | Endpoints                                                       |
 |-----------------|------|-----------------------------------------------------------------|

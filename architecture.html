@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order Assistant Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: one wide system diagram, then the request path and service table in a narrow reading column */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1b2330;
+  --muted: #5b6676;
+  --line: #8a95a5;
+  --rule: #dde2e9;
+  --accent: #2d5f8f;
+  --accent-soft: #e6eef7;
+  --external: #9a6412;
+  --external-soft: #fbf3e6;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161c; --surface: #1a2029; --fg: #e3e8ef; --muted: #9aa5b4; --line: #6d7887;
+    --rule: #2c3440; --accent: #7fb0e0; --accent-soft: #1d2b3b; --external: #e0aa58; --external-soft: #2a2216;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161c; --surface: #1a2029; --fg: #e3e8ef; --muted: #9aa5b4; --line: #6d7887;
+  --rule: #2c3440; --accent: #7fb0e0; --accent-soft: #1d2b3b; --external: #e0aa58; --external-soft: #2a2216;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+header { display: flex; flex-direction: column; gap: 8px; max-width: 70ch; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.lede { color: var(--muted); }
+code { font-family: var(--font-mono); font-size: 0.88em; }
+
+.diagram { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; min-width: 900px; height: auto; }
+svg text { font-family: var(--font-body); fill: var(--fg); }
+svg .title { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+svg .name { font-weight: 600; font-size: 13px; }
+svg .sub { font-size: 11px; fill: var(--muted); }
+svg .mono { font-family: var(--font-mono); font-size: 11px; fill: var(--fg); }
+svg .port { font-family: var(--font-mono); font-size: 12px; fill: var(--accent); }
+svg .ext-port { font-family: var(--font-mono); font-size: 12px; fill: var(--external); }
+svg .label { font-family: var(--font-mono); font-size: 10.5px; fill: var(--muted); }
+svg .svc { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; }
+svg .part { fill: var(--accent-soft); stroke: none; }
+svg .group { fill: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 3; }
+svg .chip { fill: var(--surface); stroke: var(--rule); stroke-width: 1; }
+svg .ext { fill: var(--external-soft); stroke: var(--external); stroke-width: 1.5; stroke-dasharray: 6 4; }
+svg .plain { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+svg .wire { fill: none; stroke: var(--line); stroke-width: 1.5; }
+svg .wire-ext { fill: none; stroke: var(--external); stroke-width: 1.5; }
+svg .arrow { fill: var(--line); }
+svg .arrow-ext { fill: var(--external); }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+@media (max-width: 860px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; counter-reset: step; }
+ol.steps li { counter-increment: step; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--rule); }
+ol.steps li::before { content: counter(step); font-family: var(--font-mono); font-size: 13px; color: var(--accent); padding-top: 1px; }
+ol.steps .who { font-family: var(--font-mono); font-size: 12px; color: var(--muted); display: block; }
+ol.steps li.ext::before { color: var(--external); }
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 12px 10px 0; border-top: 1px solid var(--rule); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 500; }
+td.port { font-family: var(--font-mono); color: var(--accent); font-variant-numeric: tabular-nums; }
+td .svc-name { font-family: var(--font-mono); font-weight: 500; }
+
+ul.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Spring Boot · Spring AI · MCP</span>
+    <h1>Order Assistant Architecture</h1>
+    <p class="lede">A chat UI where Claude answers order questions. Claude never reads order data directly. It asks chat-app to call MCP tools, and mcp-server turns those calls into REST requests to order-service.</p>
+  </header>
+
+  <div class="diagram" role="img" aria-label="Browser calls chat-app. chat-app calls the Claude API and, as an MCP client, calls mcp-server, which calls order-service over REST.">
+    <svg viewBox="0 0 1100 470" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow"/>
+        </marker>
+        <marker id="arr-ext" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrow-ext"/>
+        </marker>
+      </defs>
+
+      <!-- Browser -->
+      <rect x="20" y="70" width="140" height="60" rx="4" class="plain"/>
+      <text x="90" y="96" text-anchor="middle" class="name">Browser</text>
+      <text x="90" y="114" text-anchor="middle" class="sub">chat UI · index.html</text>
+      <path d="M160,100 L253,100" class="wire" marker-start="url(#arr)" marker-end="url(#arr)"/>
+      <text x="206" y="80" text-anchor="middle" class="label">POST</text>
+      <text x="206" y="92" text-anchor="middle" class="label">/api/chat</text>
+
+      <!-- chat-app -->
+      <rect x="240" y="30" width="320" height="400" rx="6" class="svc"/>
+      <text x="256" y="54" class="title">chat-app</text>
+      <text x="544" y="54" text-anchor="end" class="port">:8082</text>
+
+      <rect x="255" y="70" width="290" height="46" rx="3" class="part"/>
+      <text x="270" y="89" class="name">ChatController</text>
+      <text x="270" y="106" class="sub">session id becomes the conversation id</text>
+      <path d="M400,116 L400,128" class="wire" marker-end="url(#arr)"/>
+
+      <rect x="255" y="130" width="290" height="46" rx="3" class="part"/>
+      <text x="270" y="149" class="name">ChatService</text>
+      <text x="270" y="166" class="sub">sends the user's message through ChatClient</text>
+      <path d="M400,176 L400,188" class="wire" marker-end="url(#arr)"/>
+
+      <rect x="255" y="190" width="290" height="110" rx="3" class="group"/>
+      <text x="270" y="210" class="name">ChatClient</text>
+      <text x="530" y="210" text-anchor="end" class="sub">advisors, outer → inner</text>
+      <rect x="265" y="222" width="85" height="66" rx="3" class="chip"/>
+      <text x="307" y="244" text-anchor="middle" class="name">Memory</text>
+      <text x="307" y="261" text-anchor="middle" class="sub">adds earlier</text>
+      <text x="307" y="275" text-anchor="middle" class="sub">turns</text>
+      <rect x="358" y="222" width="85" height="66" rx="3" class="chip"/>
+      <text x="400" y="244" text-anchor="middle" class="name">Tool calling</text>
+      <text x="400" y="261" text-anchor="middle" class="sub">runs tools until</text>
+      <text x="400" y="275" text-anchor="middle" class="sub">Claude is done</text>
+      <rect x="451" y="222" width="85" height="66" rx="3" class="chip"/>
+      <text x="493" y="244" text-anchor="middle" class="name">Logger</text>
+      <text x="493" y="261" text-anchor="middle" class="sub">each request</text>
+      <text x="493" y="275" text-anchor="middle" class="sub">and response</text>
+      <path d="M400,300 L400,310" class="wire" marker-end="url(#arr)"/>
+
+      <rect x="255" y="312" width="290" height="46" rx="3" class="part"/>
+      <text x="270" y="331" class="name">Anthropic client</text>
+      <text x="270" y="348" class="sub">interceptor logs endpoint, status, ms</text>
+
+      <rect x="255" y="370" width="290" height="46" rx="3" class="part"/>
+      <text x="270" y="389" class="name">MCP client</text>
+      <text x="270" y="406" class="sub">connects on the first chat message</text>
+
+      <!-- Claude API (external) -->
+      <path d="M545,335 L610,335 L610,90 L658,90" class="wire-ext" marker-start="url(#arr-ext)" marker-end="url(#arr-ext)"/>
+      <text x="578" y="326" text-anchor="middle" class="label">HTTPS</text>
+      <rect x="660" y="40" width="240" height="104" rx="4" class="ext"/>
+      <text x="676" y="64" class="title">Claude API</text>
+      <text x="884" y="64" text-anchor="end" class="ext-port">external</text>
+      <text x="676" y="86" class="mono">POST /v1/messages</text>
+      <text x="676" y="106" class="sub">model claude-haiku-5-5 (ANTHROPIC_MODEL)</text>
+      <text x="676" y="124" class="sub">API key in a header, never logged</text>
+
+      <!-- Legend -->
+      <text x="930" y="58" class="label">LEGEND</text>
+      <path d="M930,80 L970,80" class="wire" marker-end="url(#arr)"/>
+      <text x="980" y="84" class="sub">call in this repo</text>
+      <path d="M930,104 L970,104" class="wire-ext" marker-end="url(#arr-ext)"/>
+      <text x="980" y="108" class="sub">call to Anthropic</text>
+
+      <!-- mcp-server -->
+      <path d="M545,393 L658,393" class="wire" marker-start="url(#arr)" marker-end="url(#arr)"/>
+      <text x="602" y="372" text-anchor="middle" class="label">MCP</text>
+      <text x="602" y="385" text-anchor="middle" class="label">Streamable HTTP</text>
+      <rect x="660" y="330" width="190" height="130" rx="6" class="svc"/>
+      <text x="676" y="354" class="title">mcp-server</text>
+      <text x="836" y="354" text-anchor="end" class="port">:8080</text>
+      <text x="676" y="376" class="mono">POST /mcp</text>
+      <text x="676" y="398" class="sub">tools: listOrders,</text>
+      <text x="676" y="413" class="sub">getOrderStatus(orderId)</text>
+      <text x="676" y="440" class="sub">OrderServiceClient</text>
+
+      <!-- order-service -->
+      <path d="M850,395 L908,395" class="wire" marker-end="url(#arr)"/>
+      <text x="879" y="386" text-anchor="middle" class="label">REST</text>
+      <rect x="910" y="330" width="180" height="130" rx="6" class="svc"/>
+      <text x="926" y="354" class="title">order-service</text>
+      <text x="1076" y="354" text-anchor="end" class="port">:8081</text>
+      <text x="926" y="376" class="mono">GET /orders</text>
+      <text x="926" y="394" class="mono">GET /orders/{id}/status</text>
+      <text x="926" y="420" class="sub">in-memory sample orders</text>
+      <text x="926" y="436" class="sub">1001 to 1005</text>
+    </svg>
+  </div>
+
+  <div class="cols">
+    <section>
+      <h2>One question, end to end</h2>
+      <p class="lede">What happens when someone asks <em>“What's the status of order 1003?”</em></p>
+      <ol class="steps">
+        <li><div><span class="who">Browser → chat-app</span>The page posts the message to <code>/api/chat</code>. The browser session id becomes the conversation id.</div></li>
+        <li><div><span class="who">Memory advisor</span>Earlier turns of this conversation are added, so follow-ups such as “and 1004?” make sense.</div></li>
+        <li class="ext"><div><span class="who">chat-app → Claude</span>The system prompt, history, question and the two tool definitions from mcp-server go to the Messages API.</div></li>
+        <li class="ext"><div><span class="who">Claude → chat-app</span>Claude replies with a tool call: <code>getOrderStatus {"orderId":"1003"}</code>.</div></li>
+        <li><div><span class="who">Tool calling advisor → mcp-server</span>The MCP client calls the tool on <code>/mcp</code>.</div></li>
+        <li><div><span class="who">mcp-server → order-service</span><code>GET /orders/1003/status</code> returns <code>SHIPPED</code>, which goes back as the tool result.</div></li>
+        <li class="ext"><div><span class="who">chat-app → Claude</span>A second request carries the tool result. Claude answers “Order 1003 has been shipped.”</div></li>
+        <li><div><span class="who">chat-app → Browser</span>The reply is shown and the turn is saved to the conversation's memory.</div></li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Services</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Service</th><th>Port</th><th>Job</th></tr></thead>
+          <tbody>
+            <tr><td><span class="svc-name">chat-app</span></td><td class="port">8082</td><td>Serves the chat UI, talks to Claude, and acts as the MCP client.</td></tr>
+            <tr><td><span class="svc-name">mcp-server</span></td><td class="port">8080</td><td>Exposes order lookups as MCP tools. Also answers <code>GET /hello</code>.</td></tr>
+            <tr><td><span class="svc-name">order-service</span></td><td class="port">8081</td><td>Holds order statuses: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>When something is down</h2>
+      <ul class="notes">
+        <li>chat-app starts even if mcp-server is down. It connects on the first chat message.</li>
+        <li>If mcp-server or the Claude API can't be reached, the user gets a friendly “try again” reply (HTTP 503) and the details go to the chat-app log.</li>
+        <li>An unknown order ID or an unreachable order-service comes back to Claude as a tool error, so Claude can say the order doesn't exist.</li>
+        <li><code>start-all.bat</code> starts order-service, then mcp-server, then chat-app, and waits for each to answer before starting the next.</li>
+        <li>Each service writes <code>logs/&lt;service&gt;.log</code>, rotated at 10 MB and kept for 7 days.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+</body>
+</html>

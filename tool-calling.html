@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Claude Sees Tools</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: same visual system as the architecture page; a sequence diagram first, then the request anatomy, then a short list to remember */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1b2330;
+  --muted: #5b6676;
+  --line: #8a95a5;
+  --rule: #dde2e9;
+  --accent: #2d5f8f;
+  --accent-soft: #e6eef7;
+  --external: #9a6412;
+  --external-soft: #fbf3e6;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161c; --surface: #1a2029; --fg: #e3e8ef; --muted: #9aa5b4; --line: #6d7887;
+    --rule: #2c3440; --accent: #7fb0e0; --accent-soft: #1d2b3b; --external: #e0aa58; --external-soft: #2a2216;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161c; --surface: #1a2029; --fg: #e3e8ef; --muted: #9aa5b4; --line: #6d7887;
+  --rule: #2c3440; --accent: #7fb0e0; --accent-soft: #1d2b3b; --external: #e0aa58; --external-soft: #2a2216;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 44px; }
+header { display: flex; flex-direction: column; gap: 8px; max-width: 70ch; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 70ch; }
+code { font-family: var(--font-mono); font-size: 0.88em; }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.diagram { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; min-width: 860px; height: auto; }
+svg text { font-family: var(--font-body); fill: var(--fg); }
+svg .head { font-family: var(--font-display); font-weight: 600; font-size: 14px; }
+svg .msg { font-weight: 600; font-size: 12px; paint-order: stroke; stroke: var(--surface); stroke-width: 5px; stroke-linejoin: round; }
+svg .detail { font-family: var(--font-mono); font-size: 10.5px; fill: var(--muted); paint-order: stroke; stroke: var(--surface); stroke-width: 5px; stroke-linejoin: round; }
+svg .msg.ext { fill: var(--external); }
+svg .box { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; }
+svg .box-ext { fill: var(--external-soft); stroke: var(--external); stroke-width: 1.5; stroke-dasharray: 6 4; }
+svg .box-plain { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+svg .life { stroke: var(--rule); stroke-width: 1.5; }
+svg .call { stroke: var(--line); stroke-width: 1.5; fill: none; }
+svg .reply { stroke: var(--line); stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+svg .call-ext { stroke: var(--external); stroke-width: 1.5; fill: none; }
+svg .reply-ext { stroke: var(--external); stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+svg .arrow { fill: var(--line); }
+svg .arrow-ext { fill: var(--external); }
+svg .band { fill: var(--external-soft); }
+svg .band-label { font-family: var(--font-mono); font-size: 10.5px; fill: var(--external); letter-spacing: 0.06em; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { display: inline-block; width: 28px; border-top: 1.5px solid var(--line); }
+.legend i.dash { border-top-style: dashed; }
+.legend i.ext { border-top-color: var(--external); }
+
+.anatomy { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; display: flex; flex-direction: column; }
+.anatomy .top { font-family: var(--font-mono); font-size: 13px; padding: 12px 16px; border-bottom: 1px solid var(--rule); color: var(--muted); }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--rule); align-items: start; }
+.row:last-child { border-bottom: 0; }
+.row pre { margin: 0; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5; overflow-x: auto; white-space: pre; min-width: 0; }
+.row .key { color: var(--accent); }
+.tag { display: flex; flex-direction: column; gap: 2px; }
+.tag b { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.06em; align-self: flex-start; padding: 2px 8px; border-radius: 3px; background: var(--accent-soft); color: var(--accent); }
+.tag b.tools { background: var(--external-soft); color: var(--external); }
+.tag small { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+@media (max-width: 640px) { .row { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
+
+ol.chain { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; counter-reset: c; }
+ol.chain li { counter-increment: c; display: flex; flex-direction: column; gap: 6px; padding: 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; }
+ol.chain li::before { content: counter(c); font-family: var(--font-mono); font-size: 13px; color: var(--accent); }
+ol.chain .where { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+ol.chain li:last-child { border-color: var(--external); }
+ol.chain li:last-child::before { color: var(--external); }
+@media (max-width: 820px) { ol.chain { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px) { ol.chain { grid-template-columns: minmax(0, 1fr); } }
+
+ul.remember { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; }
+ul.remember li { padding: 12px 0; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+ul.remember strong { font-weight: 600; }
+ul.remember span { color: var(--muted); font-size: 14px; }
+@media (max-width: 720px) { ul.remember { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">chat-app · Spring AI · MCP · Messages API</span>
+    <h1>How Claude Sees Tools</h1>
+    <p class="lede">Claude never connects to mcp-server. chat-app sends Claude a description of each tool with every request, Claude asks for a tool by name, and chat-app runs it. One order question takes two requests to Claude.</p>
+  </header>
+
+  <section>
+    <h2>One question, two Claude requests</h2>
+    <div class="diagram" role="img" aria-label="Sequence: browser asks chat-app; chat-app lists tools from mcp-server; request 1 to Claude returns a tool_use; chat-app calls the tool through mcp-server and order-service; request 2 to Claude carries the tool result and returns the text reply.">
+      <svg viewBox="0 0 1000 650" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrow"/></marker>
+          <marker id="ae" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrow-ext"/></marker>
+        </defs>
+
+        <!-- Bands marking the two requests to Claude -->
+        <rect x="200" y="212" width="780" height="88" rx="3" class="band"/>
+        <text x="972" y="228" text-anchor="end" class="band-label">REQUEST 1</text>
+        <rect x="200" y="488" width="780" height="88" rx="3" class="band"/>
+        <text x="972" y="504" text-anchor="end" class="band-label">REQUEST 2</text>
+
+        <!-- Lifelines -->
+        <line x1="80" y1="58" x2="80" y2="636" class="life"/>
+        <line x1="280" y1="58" x2="280" y2="636" class="life"/>
+        <line x1="500" y1="58" x2="500" y2="636" class="life"/>
+        <line x1="720" y1="58" x2="720" y2="636" class="life"/>
+        <line x1="920" y1="58" x2="920" y2="636" class="life"/>
+
+        <!-- Heads -->
+        <rect x="20" y="22" width="120" height="36" rx="4" class="box-plain"/>
+        <text x="80" y="45" text-anchor="middle" class="head">Browser</text>
+        <rect x="215" y="22" width="130" height="36" rx="4" class="box"/>
+        <text x="280" y="45" text-anchor="middle" class="head">chat-app</text>
+        <rect x="435" y="22" width="130" height="36" rx="4" class="box-ext"/>
+        <text x="500" y="45" text-anchor="middle" class="head">Claude API</text>
+        <rect x="655" y="22" width="130" height="36" rx="4" class="box"/>
+        <text x="720" y="45" text-anchor="middle" class="head">mcp-server</text>
+        <rect x="855" y="22" width="130" height="36" rx="4" class="box"/>
+        <text x="920" y="45" text-anchor="middle" class="head">order-service</text>
+
+        <!-- 1 -->
+        <line x1="80" y1="100" x2="278" y2="100" class="call" marker-end="url(#a)"/>
+        <text x="180" y="92" text-anchor="middle" class="msg">POST /api/chat</text>
+        <text x="180" y="115" text-anchor="middle" class="detail">status of order 1003?</text>
+        <!-- 2 -->
+        <line x1="280" y1="146" x2="718" y2="146" class="call" marker-end="url(#a)"/>
+        <text x="500" y="138" text-anchor="middle" class="msg">tools/list</text>
+        <text x="500" y="161" text-anchor="middle" class="detail">first chat message only</text>
+        <!-- 3 -->
+        <line x1="720" y1="192" x2="282" y2="192" class="reply" marker-end="url(#a)"/>
+        <text x="610" y="184" text-anchor="middle" class="msg">2 tool definitions</text>
+        <text x="610" y="207" text-anchor="middle" class="detail">name · description · input schema</text>
+        <!-- 4 -->
+        <line x1="280" y1="246" x2="498" y2="246" class="call-ext" marker-end="url(#ae)"/>
+        <text x="390" y="238" text-anchor="middle" class="msg ext">messages + tools</text>
+        <text x="390" y="261" text-anchor="middle" class="detail">SYSTEM, USER</text>
+        <!-- 5 -->
+        <line x1="500" y1="284" x2="282" y2="284" class="reply-ext" marker-end="url(#ae)"/>
+        <text x="390" y="278" text-anchor="middle" class="msg ext">tool_use</text>
+        <text x="390" y="296" text-anchor="middle" class="detail">getOrderStatus 1003</text>
+        <!-- 6 -->
+        <line x1="280" y1="330" x2="718" y2="330" class="call" marker-end="url(#a)"/>
+        <text x="610" y="322" text-anchor="middle" class="msg">tools/call</text>
+        <text x="610" y="345" text-anchor="middle" class="detail">getOrderStatus {"orderId":"1003"}</text>
+        <!-- 7 -->
+        <line x1="720" y1="376" x2="918" y2="376" class="call" marker-end="url(#a)"/>
+        <text x="820" y="368" text-anchor="middle" class="msg">GET</text>
+        <text x="820" y="391" text-anchor="middle" class="detail">/orders/1003/status</text>
+        <!-- 8 -->
+        <line x1="920" y1="422" x2="722" y2="422" class="reply" marker-end="url(#a)"/>
+        <text x="820" y="414" text-anchor="middle" class="msg">SHIPPED</text>
+        <!-- 9 -->
+        <line x1="720" y1="468" x2="282" y2="468" class="reply" marker-end="url(#a)"/>
+        <text x="610" y="460" text-anchor="middle" class="msg">tool result</text>
+        <text x="610" y="483" text-anchor="middle" class="detail">{"status":"SHIPPED"}</text>
+        <!-- 10 -->
+        <line x1="280" y1="522" x2="498" y2="522" class="call-ext" marker-end="url(#ae)"/>
+        <text x="390" y="514" text-anchor="middle" class="msg ext">messages + tools</text>
+        <text x="390" y="537" text-anchor="middle" class="detail">adds ASSISTANT, TOOL</text>
+        <!-- 11 -->
+        <line x1="500" y1="560" x2="282" y2="560" class="reply-ext" marker-end="url(#ae)"/>
+        <text x="390" y="554" text-anchor="middle" class="msg ext">text reply</text>
+        <text x="390" y="572" text-anchor="middle" class="detail">Order 1003 has been shipped.</text>
+        <!-- 12 -->
+        <line x1="280" y1="610" x2="82" y2="610" class="reply" marker-end="url(#a)"/>
+        <text x="180" y="602" text-anchor="middle" class="msg">reply shown</text>
+        <text x="180" y="625" text-anchor="middle" class="detail">turn saved to memory</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i></i>call</span>
+      <span><i class="dash"></i>reply</span>
+      <span><i class="ext"></i>to and from Claude</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>What request 2 contains</h2>
+    <p class="lede">Simplified JSON of the second call to <code>POST /v1/messages</code>. The labels on the right are the names you see in <code>chat-app.log</code>. Spring AI converts them into the API's own shape.</p>
+    <div class="anatomy">
+      <div class="top">POST https://api.anthropic.com/v1/messages · "model": "claude-haiku-5-5"</div>
+      <div class="row">
+        <pre><span class="key">"system"</span>: "You are an order assistant. ..."</pre>
+        <div class="tag"><b>SYSTEM</b><small>Your instructions. A separate field, outside the messages.</small></div>
+      </div>
+      <div class="row">
+        <pre><span class="key">"messages"</span>: [
+  { "role": "user",
+    "content": "What's the status of order 1003?" },</pre>
+        <div class="tag"><b>USER</b><small>What the person typed.</small></div>
+      </div>
+      <div class="row">
+        <pre>  { "role": "assistant",
+    "content": [{ "type": "tool_use", "name": "getOrderStatus",
+                  "input": { "orderId": "1003" } }] },</pre>
+        <div class="tag"><b>ASSISTANT</b><small>Claude's earlier reply: a request to run a tool.</small></div>
+      </div>
+      <div class="row">
+        <pre>  { "role": "user",
+    "content": [{ "type": "tool_result",
+                  "content": "{\"status\":\"SHIPPED\"}" }] }
+]</pre>
+        <div class="tag"><b>TOOL</b><small>The tool's result. The API sends it in a user message.</small></div>
+      </div>
+      <div class="row">
+        <pre><span class="key">"tools"</span>: [
+  { "name": "listOrders", ... },
+  { "name": "getOrderStatus",
+    "description": "Get the current status ... of a single order by its ID ...",
+    "input_schema": { "type": "object",
+                      "properties": { "orderId": { "type": "string" } },
+                      "required": ["orderId"] } }
+]</pre>
+        <div class="tag"><b class="tools">tools (2)</b><small>Everything Claude knows about your tools. Sent with every request.</small></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where a tool's definition comes from</h2>
+    <ol class="chain">
+      <li><span class="where">mcp-server · OrderTools.java</span><span><code>@McpTool</code> gives the name and description. <code>@McpToolParam</code> and the method's parameters give the input schema.</span></li>
+      <li><span class="where">mcp-server · /mcp</span><span>Answers the MCP <code>tools/list</code> request with those definitions.</span></li>
+      <li><span class="where">chat-app · ChatClientConfig</span><span>Wraps each one as a <code>ToolCallback</code>. <code>.defaultTools(mcpTools)</code> attaches them to every chat.</span></li>
+      <li><span class="where">Messages API request</span><span>They go in the <code>"tools"</code> field next to the messages, on every call.</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Remember</h2>
+    <ul class="remember">
+      <li><strong>Claude never runs a tool.</strong><span>It replies with a tool_use request. chat-app runs the tool through mcp-server.</span></li>
+      <li><strong>Claude remembers nothing between calls.</strong><span>Every request resends the system prompt, the history and the tools.</span></li>
+      <li><strong>A question that needs a tool takes two requests.</strong><span>The first gets the tool_use. The second carries the result and gets the answer.</span></li>
+      <li><strong>Descriptions steer tool choice.</strong><span>Claude picks a tool only from its name, description and schema, so write them for Claude.</span></li>
+      <li><strong>Chat memory keeps reply text only.</strong><span>Earlier tool calls and results are not in the history of the next question.</span></li>
+      <li><strong>SYSTEM and TOOL are Spring AI's labels.</strong><span>The API has only user and assistant roles, plus a separate system field.</span></li>
+      <li><strong>Add a tool without touching chat-app.</strong><span>A new <code>@McpTool</code> method shows up the next time chat-app connects.</span></li>
+      <li><strong>See it in the log.</strong><span><code>chat-app/logs/chat-app.log</code> prints each request's messages and its <code>tools (2)</code> list.</span></li>
+    </ul>
+  </section>
+</div>
+</body>
+</html>

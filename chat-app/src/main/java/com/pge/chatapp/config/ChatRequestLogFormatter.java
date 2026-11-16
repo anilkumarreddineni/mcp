@@ -8,6 +8,9 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.definition.ToolDefinition;
 
 /**
  * Turns a chat request into readable log text: one block per message, labelled with its
@@ -36,7 +39,21 @@ final class ChatRequestLogFormatter {
 		for (int i = 0; i < messages.size(); i++) {
 			appendMessage(out, i + 1, messages.get(i));
 		}
+		if (options instanceof ToolCallingChatOptions toolOptions) {
+			appendTools(out, toolOptions.getToolCallbacks());
+		}
 		return out.toString();
+	}
+
+	// The tools Claude may call: sent in the request's "tools" field, beside the messages
+	private static void appendTools(StringBuilder out, List<ToolCallback> tools) {
+		out.append('\n').append("  tools (").append(tools.size()).append("):");
+		for (ToolCallback tool : tools) {
+			ToolDefinition definition = tool.getToolDefinition();
+			appendBlock(out, definition.name() + ": " + definition.description());
+			// JSON strings cannot hold raw line breaks, so joining lines keeps the schema valid
+			appendBlock(out, "  input: " + definition.inputSchema().replaceAll("\\s*\\R\\s*", ""));
+		}
 	}
 
 	private static void appendMessage(StringBuilder out, int number, Message message) {
@@ -60,7 +77,7 @@ final class ChatRequestLogFormatter {
 	// Indents every line, so multi-line text such as the system prompt stays inside its message
 	private static void appendBlock(StringBuilder out, String text) {
 		for (String line : text.split("\\R")) {
-			out.append('\n').append(INDENT).append(line.strip());
+			out.append('\n').append(INDENT).append(line.stripTrailing());
 		}
 	}
 

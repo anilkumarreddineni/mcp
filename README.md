@@ -1,6 +1,6 @@
 # mcp
 
-Spring Boot services (Java 17).
+Spring Boot services (Java 17) and an Angular chat UI.
 
 Architecture diagram: [architecture.html](architecture.html) (open it in a browser), also online at https://claude.ai/artifact/KjMkfbcErEZ4qChynaV9tm. It shows how the services connect and the path one chat question takes through them.
 
@@ -10,35 +10,39 @@ Tool calling diagram: [tool-calling.html](tool-calling.html), also online at htt
 |-----------------|------|-----------------------------------------------------------------|
 | `mcp-server`    | 8080 | `GET /hello`, MCP (Streamable HTTP) at `/mcp`                   |
 | `order-service` | 8081 | `GET /orders`, `GET /orders/{orderId}/status`                   |
-| `chat-app`      | 8082 | Chat UI at `/`, `POST /api/chat`                                |
+| `mcp-client`    | 8082 | `POST /api/chat` (MCP client of `mcp-server`, calls Claude)     |
+| `chat-ui`       | 4200 | Angular chat UI at `/`, proxies `/api` to `mcp-client`          |
 
 ## Run locally
 
-`chat-app` calls Claude, so set your Anthropic API key first. Never commit it.
+`mcp-client` calls Claude, so set your Anthropic API key first. Never commit it.
 
 ```sh
 export ANTHROPIC_API_KEY=sk-ant-...            # PowerShell: $env:ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-Start each service from its own directory, in this order:
+Start each service from its own directory, in this order (`chat-ui` needs Node.js 20.19+ and runs `npm install` once first):
 
 ```sh
 cd order-service && ./mvnw spring-boot:run
 cd mcp-server && ./mvnw spring-boot:run
-cd chat-app && ./mvnw spring-boot:run
+cd mcp-client && ./mvnw spring-boot:run
+cd chat-ui && npm install && npm start
 ```
 
-On Windows, `start-all.bat` does this for you. It opens one window per service, waits for each service to answer before it starts the next, and then opens the chat UI. To stop a service, close its window.
+On Windows, `start-all.bat` does this for you. It opens one window per service, waits for each service to answer before it starts the next, and then opens the chat UI. To stop a service, close its window. `stop-all.bat` stops them all.
 
-Then open http://localhost:8082 and ask, for example, "What's the status of order 1003?".
+Then open http://localhost:4200 and ask, for example, "What's the status of order 1003?".
 
-Run tests with `./mvnw test` in any service directory. They don't need an API key.
+Run tests with `./mvnw test` in any Spring Boot service directory, and `npm test` in `chat-ui`. They don't need an API key.
 
 All services use [Lombok](https://projectlombok.org/) (`@RequiredArgsConstructor` for constructor injection). Maven needs no setup. VS Code's Java extension supports Lombok out of the box. In IntelliJ, enable annotation processing.
 
-## Chat app
+## MCP client
 
-`chat-app` uses Spring AI's `ChatClient` with Claude and connects to `mcp-server` as an MCP client, so Claude answers order questions by calling the MCP tools below. Each browser session keeps its own conversation history in memory, so follow-up questions such as "and order 1004?" work.
+`mcp-client` is the backend for the chat. It has no UI of its own. It uses Spring AI's `ChatClient` with Claude and connects to `mcp-server` as an MCP client, so Claude answers order questions by calling the MCP tools below. Each browser session (the `JSESSIONID` cookie) keeps its own conversation history in memory, so follow-up questions such as "and order 1004?" work.
+
+`POST /api/chat` takes `{"message": "..."}` and returns `{"reply": "..."}`. A blank message returns 400, and an unreachable `mcp-server` or Claude API returns 503, both with a readable `reply`.
 
 | Environment variable | Default                 | Purpose                    |
 |----------------------|-------------------------|----------------------------|
@@ -46,12 +50,26 @@ All services use [Lombok](https://projectlombok.org/) (`@RequiredArgsConstructor
 | `ANTHROPIC_MODEL`    | `claude-haiku-5-5`      | Claude model to use        |
 | `MCP_SERVER_URL`     | `http://localhost:8080` | Where `mcp-server` runs    |
 
-`chat-app` logs to the console and to `chat-app/logs/chat-app.log`, which is git-ignored. For every Claude API call it logs:
+`mcp-client` logs to the console and to `mcp-client/logs/mcp-client.log`, which is git-ignored. For every Claude API call it logs:
 
 - the endpoint, HTTP status and duration, e.g. `<-- 200 POST https://api.anthropic.com/v1/messages (755 ms)`. The API key is never logged.
-- the request and response content: messages, tool calls, tool results and token usage. This includes what users type. To turn it off, set `logging.level.org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor=INFO` in `chat-app/src/main/resources/application.properties`.
+- the request and response content: messages, tool calls, tool results and token usage. This includes what users type. To turn it off, set `logging.level.org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor=INFO` in `mcp-client/src/main/resources/application.properties`.
 
-`chat-app` starts even when `mcp-server` is down, and connects on the first chat message. If `mcp-server` or the Claude API can't be reached, the chat shows a friendly error and the details go to the `chat-app` log.
+`mcp-client` starts even when `mcp-server` is down, and connects on the first chat message. If `mcp-server` or the Claude API can't be reached, the chat shows a friendly error and the details go to the `mcp-client` log.
+
+## Chat UI
+
+`chat-ui` is an Angular 20 app (standalone components, signals, zoneless) in [chat-ui/](chat-ui/):
+
+| File | Purpose |
+|------|---------|
+| [chat.service.ts](chat-ui/src/app/chat/chat.service.ts) | Posts to `/api/chat` and turns HTTP errors into messages for the user |
+| [chat.ts](chat-ui/src/app/chat/chat.ts) | Chat screen: message list, sample questions, "Thinking..." while waiting |
+| [proxy.conf.json](chat-ui/proxy.conf.json) | Dev-server proxy from `/api` to `mcp-client` on port 8082 |
+
+The proxy keeps the browser on one origin, so the session cookie that holds the conversation works without CORS. If `mcp-client` runs elsewhere, change `target` in `proxy.conf.json`.
+
+`npm test` runs the unit tests in headless Chrome. Without Chrome, point `CHROME_BIN` at Edge, e.g. `CHROME_BIN="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" npm test -- --watch=false --browsers=ChromeHeadless`.
 
 ## MCP tools
 

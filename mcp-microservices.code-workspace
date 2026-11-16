@@ -3,12 +3,15 @@
 		{ "name": "mcp (root)", "path": "." },
 		{ "path": "mcp-server" },
 		{ "path": "order-service" },
-		{ "path": "chat-app" }
+		{ "path": "mcp-client" },
+		{ "path": "chat-ui" }
 	],
 	"settings": {
 		"java.configuration.updateBuildConfiguration": "automatic",
 		"files.exclude": {
-			"**/target": true
+			"**/target": true,
+			"**/node_modules": true,
+			"**/.angular": true
 		},
 		"java.compile.nullAnalysis.mode": "disabled"
 	}

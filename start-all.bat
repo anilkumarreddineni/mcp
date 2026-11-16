@@ -1,5 +1,5 @@
 @echo off
-rem Starts order-service, mcp-server and chat-app, each in its own window.
+rem Starts order-service, mcp-server, mcp-client and chat-ui, each in its own window.
 rem Each service waits for the one before it to answer before starting.
 rem Close a service's window (or press Ctrl+C in it) to stop it.
 
@@ -7,13 +7,13 @@ setlocal
 cd /d "%~dp0"
 
 if "%ANTHROPIC_API_KEY%"=="" (
-    echo WARNING: ANTHROPIC_API_KEY is not set. chat-app will not be able to call Claude.
+    echo WARNING: ANTHROPIC_API_KEY is not set. mcp-client will not be able to call Claude.
     echo          Set it first, e.g.  set ANTHROPIC_API_KEY=sk-ant-...
     echo.
 )
 
 echo Clearing old log files...
-for %%s in (order-service mcp-server chat-app) do (
+for %%s in (order-service mcp-server mcp-client) do (
     if exist "%~dp0%%s\logs" del /q "%~dp0%%s\logs\*.log*" 2>nul
 )
 echo.
@@ -28,14 +28,24 @@ echo   Log: %~dp0mcp-server\logs\mcp-server.log
 start "mcp-server (8080)" /d "%~dp0mcp-server" cmd /k mvnw.cmd spring-boot:run
 call :waitFor http://localhost:8080/hello mcp-server || goto :failed
 
-echo Starting chat-app on port 8082...
-echo   Log: %~dp0chat-app\logs\chat-app.log
-start "chat-app (8082)" /d "%~dp0chat-app" cmd /k mvnw.cmd spring-boot:run
-call :waitFor http://localhost:8082/ chat-app || goto :failed
+echo Starting mcp-client on port 8082...
+echo   Log: %~dp0mcp-client\logs\mcp-client.log
+start "mcp-client (8082)" /d "%~dp0mcp-client" cmd /k mvnw.cmd spring-boot:run
+call :waitFor http://localhost:8082/api/chat mcp-client || goto :failed
+
+if not exist "%~dp0chat-ui\node_modules" (
+    echo Installing chat-ui packages ^(first run only^)...
+    pushd "%~dp0chat-ui"
+    call npm install || (popd & goto :failed)
+    popd
+)
+echo Starting chat-ui on port 4200...
+start "chat-ui (4200)" /d "%~dp0chat-ui" cmd /k npm start
+call :waitFor http://localhost:4200/ chat-ui || goto :failed
 
 echo.
-echo All services are up. Opening http://localhost:8082
-start "" http://localhost:8082
+echo All services are up. Opening http://localhost:4200
+start "" http://localhost:4200
 exit /b 0
 
 :failed

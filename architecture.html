@@ -97,10 +97,10 @@ ul.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column;
   <header>
     <span class="eyebrow">Spring Boot · Spring AI · MCP</span>
     <h1>Order Assistant Architecture</h1>
-    <p class="lede">A chat UI where Claude answers order questions. Claude never reads order data directly. It asks chat-app to call MCP tools, and mcp-server turns those calls into REST requests to order-service.</p>
+    <p class="lede">A chat UI where Claude answers order questions. Claude never reads order data directly. It asks mcp-client to call MCP tools, and mcp-server turns those calls into REST requests to order-service.</p>
   </header>
 
-  <div class="diagram" role="img" aria-label="Browser calls chat-app. chat-app calls the Claude API and, as an MCP client, calls mcp-server, which calls order-service over REST.">
+  <div class="diagram" role="img" aria-label="Browser calls mcp-client. mcp-client calls the Claude API and, as an MCP client, calls mcp-server, which calls order-service over REST.">
     <svg viewBox="0 0 1100 470" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -119,9 +119,9 @@ ul.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column;
       <text x="206" y="80" text-anchor="middle" class="label">POST</text>
       <text x="206" y="92" text-anchor="middle" class="label">/api/chat</text>
 
-      <!-- chat-app -->
+      <!-- mcp-client -->
       <rect x="240" y="30" width="320" height="400" rx="6" class="svc"/>
-      <text x="256" y="54" class="title">chat-app</text>
+      <text x="256" y="54" class="title">mcp-client</text>
       <text x="544" y="54" text-anchor="end" class="port">:8082</text>
 
       <rect x="255" y="70" width="290" height="46" rx="3" class="part"/>
@@ -206,14 +206,14 @@ ul.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column;
       <h2>One question, end to end</h2>
       <p class="lede">What happens when someone asks <em>“What's the status of order 1003?”</em></p>
       <ol class="steps">
-        <li><div><span class="who">Browser → chat-app</span>The page posts the message to <code>/api/chat</code>. The browser session id becomes the conversation id.</div></li>
+        <li><div><span class="who">Browser → mcp-client</span>The Angular chat-ui posts the message to <code>/api/chat</code>. The browser session id becomes the conversation id.</div></li>
         <li><div><span class="who">Memory advisor</span>Earlier turns of this conversation are added, so follow-ups such as “and 1004?” make sense.</div></li>
-        <li class="ext"><div><span class="who">chat-app → Claude</span>The system prompt, history, question and the two tool definitions from mcp-server go to the Messages API.</div></li>
-        <li class="ext"><div><span class="who">Claude → chat-app</span>Claude replies with a tool call: <code>getOrderStatus {"orderId":"1003"}</code>.</div></li>
+        <li class="ext"><div><span class="who">mcp-client → Claude</span>The system prompt, history, question and the two tool definitions from mcp-server go to the Messages API.</div></li>
+        <li class="ext"><div><span class="who">Claude → mcp-client</span>Claude replies with a tool call: <code>getOrderStatus {"orderId":"1003"}</code>.</div></li>
         <li><div><span class="who">Tool calling advisor → mcp-server</span>The MCP client calls the tool on <code>/mcp</code>.</div></li>
         <li><div><span class="who">mcp-server → order-service</span><code>GET /orders/1003/status</code> returns <code>SHIPPED</code>, which goes back as the tool result.</div></li>
-        <li class="ext"><div><span class="who">chat-app → Claude</span>A second request carries the tool result. Claude answers “Order 1003 has been shipped.”</div></li>
-        <li><div><span class="who">chat-app → Browser</span>The reply is shown and the turn is saved to the conversation's memory.</div></li>
+        <li class="ext"><div><span class="who">mcp-client → Claude</span>A second request carries the tool result. Claude answers “Order 1003 has been shipped.”</div></li>
+        <li><div><span class="who">mcp-client → Browser</span>The reply is shown and the turn is saved to the conversation's memory.</div></li>
       </ol>
     </section>
 
@@ -223,7 +223,7 @@ ul.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column;
         <table>
           <thead><tr><th>Service</th><th>Port</th><th>Job</th></tr></thead>
           <tbody>
-            <tr><td><span class="svc-name">chat-app</span></td><td class="port">8082</td><td>Serves the chat UI, talks to Claude, and acts as the MCP client.</td></tr>
+            <tr><td><span class="svc-name">mcp-client</span></td><td class="port">8082</td><td>Talks to Claude and acts as the MCP client. The Angular chat-ui (port 4200) is its front end and proxies <code>/api</code> to it.</td></tr>
             <tr><td><span class="svc-name">mcp-server</span></td><td class="port">8080</td><td>Exposes order lookups as MCP tools. Also answers <code>GET /hello</code>.</td></tr>
             <tr><td><span class="svc-name">order-service</span></td><td class="port">8081</td><td>Holds order statuses: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED.</td></tr>
           </tbody>
@@ -232,10 +232,10 @@ ul.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column;
 
       <h2>When something is down</h2>
       <ul class="notes">
-        <li>chat-app starts even if mcp-server is down. It connects on the first chat message.</li>
-        <li>If mcp-server or the Claude API can't be reached, the user gets a friendly “try again” reply (HTTP 503) and the details go to the chat-app log.</li>
+        <li>mcp-client starts even if mcp-server is down. It connects on the first chat message.</li>
+        <li>If mcp-server or the Claude API can't be reached, the user gets a friendly “try again” reply (HTTP 503) and the details go to the mcp-client log.</li>
         <li>An unknown order ID or an unreachable order-service comes back to Claude as a tool error, so Claude can say the order doesn't exist.</li>
-        <li><code>start-all.bat</code> starts order-service, then mcp-server, then chat-app, and waits for each to answer before starting the next.</li>
+        <li><code>start-all.bat</code> starts order-service, then mcp-server, then mcp-client, and waits for each to answer before starting the next.</li>
         <li>Each service writes <code>logs/&lt;service&gt;.log</code>, rotated at 10 MB and kept for 7 days.</li>
       </ul>
     </section>

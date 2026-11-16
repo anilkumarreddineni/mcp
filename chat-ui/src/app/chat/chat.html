@@ -1,0 +1,38 @@
+<div class="app">
+  <header>
+    <h1>Order Assistant</h1>
+    <p>Ask about your orders in plain language.</p>
+  </header>
+
+  <div class="messages" #messageList aria-live="polite">
+    @for (message of messages(); track $index) {
+      <div class="message" [class]="message.sender" [class.error]="message.error">{{ message.text }}</div>
+    }
+
+    @if (!started()) {
+      <div class="suggestions">
+        @for (suggestion of suggestions; track suggestion) {
+          <button type="button" (click)="send(suggestion)">{{ suggestion }}</button>
+        }
+      </div>
+    }
+
+    @if (sending()) {
+      <div class="message bot typing">Thinking...</div>
+    }
+  </div>
+
+  <form (submit)="submit($event)">
+    <input
+      #input
+      type="text"
+      placeholder="Ask about an order..."
+      autocomplete="off"
+      aria-label="Message"
+      [value]="draft()"
+      (input)="draft.set(input.value)"
+      [disabled]="sending()"
+    />
+    <button class="send" type="submit" [disabled]="sending() || !draft().trim()">Send</button>
+  </form>
+</div>

@@ -1,10 +1,11 @@
 @echo off
-rem Stops chat-app, mcp-server and order-service (the reverse of start-all.bat).
+rem Stops chat-ui, mcp-client, mcp-server and order-service (the reverse of start-all.bat).
 rem Closes each service's window, then kills anything still listening on its port.
 
 setlocal
 
-call :stop "chat-app (8082)" 8082
+call :stop "chat-ui (4200)" 4200
+call :stop "mcp-client (8082)" 8082
 call :stop "mcp-server (8080)" 8080
 call :stop "order-service (8081)" 8081
 

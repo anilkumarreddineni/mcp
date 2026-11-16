@@ -109,14 +109,14 @@ ul.remember span { color: var(--muted); font-size: 14px; }
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">chat-app · Spring AI · MCP · Messages API</span>
+    <span class="eyebrow">mcp-client · Spring AI · MCP · Messages API</span>
     <h1>How Claude Sees Tools</h1>
-    <p class="lede">Claude never connects to mcp-server. chat-app sends Claude a description of each tool with every request, Claude asks for a tool by name, and chat-app runs it. One order question takes two requests to Claude.</p>
+    <p class="lede">Claude never connects to mcp-server. mcp-client sends Claude a description of each tool with every request, Claude asks for a tool by name, and mcp-client runs it. One order question takes two requests to Claude.</p>
   </header>
 
   <section>
     <h2>One question, two Claude requests</h2>
-    <div class="diagram" role="img" aria-label="Sequence: browser asks chat-app; chat-app lists tools from mcp-server; request 1 to Claude returns a tool_use; chat-app calls the tool through mcp-server and order-service; request 2 to Claude carries the tool result and returns the text reply.">
+    <div class="diagram" role="img" aria-label="Sequence: browser asks mcp-client; mcp-client lists tools from mcp-server; request 1 to Claude returns a tool_use; mcp-client calls the tool through mcp-server and order-service; request 2 to Claude carries the tool result and returns the text reply.">
       <svg viewBox="0 0 1000 650" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrow"/></marker>
@@ -140,7 +140,7 @@ ul.remember span { color: var(--muted); font-size: 14px; }
         <rect x="20" y="22" width="120" height="36" rx="4" class="box-plain"/>
         <text x="80" y="45" text-anchor="middle" class="head">Browser</text>
         <rect x="215" y="22" width="130" height="36" rx="4" class="box"/>
-        <text x="280" y="45" text-anchor="middle" class="head">chat-app</text>
+        <text x="280" y="45" text-anchor="middle" class="head">mcp-client</text>
         <rect x="435" y="22" width="130" height="36" rx="4" class="box-ext"/>
         <text x="500" y="45" text-anchor="middle" class="head">Claude API</text>
         <rect x="655" y="22" width="130" height="36" rx="4" class="box"/>
@@ -206,7 +206,7 @@ ul.remember span { color: var(--muted); font-size: 14px; }
 
   <section>
     <h2>What request 2 contains</h2>
-    <p class="lede">Simplified JSON of the second call to <code>POST /v1/messages</code>. The labels on the right are the names you see in <code>chat-app.log</code>. Spring AI converts them into the API's own shape.</p>
+    <p class="lede">Simplified JSON of the second call to <code>POST /v1/messages</code>. The labels on the right are the names you see in <code>mcp-client.log</code>. Spring AI converts them into the API's own shape.</p>
     <div class="anatomy">
       <div class="top">POST https://api.anthropic.com/v1/messages · "model": "claude-haiku-5-5"</div>
       <div class="row">
@@ -251,7 +251,7 @@ ul.remember span { color: var(--muted); font-size: 14px; }
     <ol class="chain">
       <li><span class="where">mcp-server · OrderTools.java</span><span><code>@McpTool</code> gives the name and description. <code>@McpToolParam</code> and the method's parameters give the input schema.</span></li>
       <li><span class="where">mcp-server · /mcp</span><span>Answers the MCP <code>tools/list</code> request with those definitions.</span></li>
-      <li><span class="where">chat-app · ChatClientConfig</span><span>Wraps each one as a <code>ToolCallback</code>. <code>.defaultTools(mcpTools)</code> attaches them to every chat.</span></li>
+      <li><span class="where">mcp-client · ChatClientConfig</span><span>Wraps each one as a <code>ToolCallback</code>. <code>.defaultTools(mcpTools)</code> attaches them to every chat.</span></li>
       <li><span class="where">Messages API request</span><span>They go in the <code>"tools"</code> field next to the messages, on every call.</span></li>
     </ol>
   </section>
@@ -259,14 +259,14 @@ ul.remember span { color: var(--muted); font-size: 14px; }
   <section>
     <h2>Remember</h2>
     <ul class="remember">
-      <li><strong>Claude never runs a tool.</strong><span>It replies with a tool_use request. chat-app runs the tool through mcp-server.</span></li>
+      <li><strong>Claude never runs a tool.</strong><span>It replies with a tool_use request. mcp-client runs the tool through mcp-server.</span></li>
       <li><strong>Claude remembers nothing between calls.</strong><span>Every request resends the system prompt, the history and the tools.</span></li>
       <li><strong>A question that needs a tool takes two requests.</strong><span>The first gets the tool_use. The second carries the result and gets the answer.</span></li>
       <li><strong>Descriptions steer tool choice.</strong><span>Claude picks a tool only from its name, description and schema, so write them for Claude.</span></li>
       <li><strong>Chat memory keeps reply text only.</strong><span>Earlier tool calls and results are not in the history of the next question.</span></li>
       <li><strong>SYSTEM and TOOL are Spring AI's labels.</strong><span>The API has only user and assistant roles, plus a separate system field.</span></li>
-      <li><strong>Add a tool without touching chat-app.</strong><span>A new <code>@McpTool</code> method shows up the next time chat-app connects.</span></li>
-      <li><strong>See it in the log.</strong><span><code>chat-app/logs/chat-app.log</code> prints each request's messages and its <code>tools (2)</code> list.</span></li>
+      <li><strong>Add a tool without touching mcp-client.</strong><span>A new <code>@McpTool</code> method shows up the next time mcp-client connects.</span></li>
+      <li><strong>See it in the log.</strong><span><code>mcp-client/logs/mcp-client.log</code> prints each request's messages and its <code>tools (2)</code> list.</span></li>
     </ul>
   </section>
 </div>

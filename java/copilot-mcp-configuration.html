@@ -1,0 +1,225 @@
+<title>Adding MCP to GitHub Copilot</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: same visual system as the Claude Code page; two separate columns that each keep their own file, then meet at one server */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1b2330;
+  --muted: #5b6676;
+  --line: #8a95a5;
+  --rule: #dde2e9;
+  --accent: #2d5f8f;
+  --accent-soft: #e6eef7;
+  --external: #9a6412;
+  --external-soft: #fbf3e6;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161c; --surface: #1a2029; --fg: #e3e8ef; --muted: #9aa5b4; --line: #6d7887;
+    --rule: #2c3440; --accent: #7fb0e0; --accent-soft: #1d2b3b; --external: #e0aa58; --external-soft: #2a2216;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161c; --surface: #1a2029; --fg: #e3e8ef; --muted: #9aa5b4; --line: #6d7887;
+  --rule: #2c3440; --accent: #7fb0e0; --accent-soft: #1d2b3b; --external: #e0aa58; --external-soft: #2a2216;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+}
+.wrap { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+header { display: flex; flex-direction: column; gap: 8px; max-width: 70ch; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--font-display); font-weight: 600; font-size: 15px; margin: 0; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 70ch; }
+.lede a { color: var(--accent); }
+code { font-family: var(--font-mono); font-size: 0.88em; }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.note { color: var(--muted); font-size: 14px; max-width: 75ch; }
+
+.diagram { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; min-width: 820px; height: auto; }
+svg text { font-family: var(--font-body); fill: var(--fg); }
+svg .tag { font-family: var(--font-mono); font-size: 10.5px; fill: var(--muted); letter-spacing: 0.06em; }
+svg .head { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+svg .detail { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+svg .detail.ext { fill: var(--external); }
+svg .box { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; }
+svg .box-key { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+svg .box-ext { fill: var(--external-soft); stroke: var(--external); stroke-width: 1.5; stroke-dasharray: 6 4; }
+svg .divider { stroke: var(--rule); stroke-width: 1.5; stroke-dasharray: 4 6; }
+svg .divider-label { font-family: var(--font-mono); font-size: 10.5px; fill: var(--muted); letter-spacing: 0.06em; }
+svg .call { stroke: var(--line); stroke-width: 1.5; fill: none; }
+svg .call-ext { stroke: var(--external); stroke-width: 1.5; fill: none; }
+svg .arrow { fill: var(--line); }
+svg .arrow-ext { fill: var(--external); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { display: inline-block; width: 22px; height: 14px; border: 1.5px solid var(--accent); border-radius: 3px; background: var(--surface); }
+.legend i.key { background: var(--accent-soft); border-width: 2px; }
+.legend i.ext { border-color: var(--external); border-style: dashed; background: var(--external-soft); }
+
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.file { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; display: flex; flex-direction: column; min-width: 0; }
+.file-head { display: flex; flex-direction: column; gap: 2px; padding: 10px 16px; border-bottom: 1px solid var(--rule); }
+.file-head .path { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+pre { margin: 0; padding: 14px 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; }
+pre mark { background: var(--accent-soft); color: var(--accent); font-weight: 500; border-radius: 3px; padding: 0 3px; }
+
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 16px; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; }
+
+.remember { display: flex; flex-direction: column; gap: 10px; margin: 0; padding-left: 20px; max-width: 80ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">MCP-11 · 2 of 2 · GitHub Copilot</span>
+    <h1>Adding MCP to GitHub Copilot</h1>
+    <p class="lede">Copilot CLI and Copilot in VS Code keep separate config files, so you add the Atlassian server in each one. Claude Code works differently: its CLI and VS Code extension share one file. See <a href="https://claude.ai/artifact/Fmcf1UaGvQ5dVnnGm7YVPJ">Adding MCP to Claude Code</a>.</p>
+  </header>
+
+  <section>
+    <h2>Add it in each one</h2>
+    <div class="diagram">
+      <svg viewBox="0 0 1000 560" role="img" aria-labelledby="dtitle">
+        <title id="dtitle">Copilot CLI saves the server to ~/.copilot/mcp-config.json and Copilot in VS Code saves it to mcp.json. These are two separate files. Both then connect to the same Atlassian server and sign-in.</title>
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="arrow" d="M0 0 L10 5 L0 10 z"/></marker>
+          <marker id="ah-ext" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="arrow-ext" d="M0 0 L10 5 L0 10 z"/></marker>
+        </defs>
+
+        <!-- separator: the two sides do not share anything until the server -->
+        <line class="divider" x1="500" y1="20" x2="500" y2="338"/>
+        <text class="divider-label" x="500" y="352" text-anchor="middle">SEPARATE FILES · ADD IN BOTH</text>
+
+        <!-- Copilot CLI -->
+        <rect class="box" x="40" y="24" width="420" height="100" rx="6"/>
+        <text class="tag" x="60" y="48">TERMINAL</text>
+        <text class="head" x="60" y="70">GitHub Copilot CLI</text>
+        <text class="detail" x="60" y="92">run copilot, then type /mcp add</text>
+        <text class="detail" x="60" y="110">name atlassian · type HTTP · paste the URL</text>
+
+        <path class="call" d="M250 124 V152" marker-end="url(#ah)"/>
+
+        <rect class="box-key" x="40" y="154" width="420" height="70" rx="6"/>
+        <text class="head" x="60" y="182">~/.copilot/mcp-config.json</text>
+        <text class="detail" x="60" y="204">key: mcpServers · used by Copilot CLI only</text>
+
+        <path class="call" d="M250 224 V252" marker-end="url(#ah)"/>
+
+        <rect class="box" x="40" y="254" width="420" height="70" rx="6"/>
+        <text class="head" x="60" y="282">Check it with /mcp show</text>
+        <text class="detail" x="60" y="304">sign in when prompted</text>
+
+        <!-- Copilot in VS Code -->
+        <rect class="box" x="540" y="24" width="420" height="100" rx="6"/>
+        <text class="tag" x="560" y="48">VS CODE</text>
+        <text class="head" x="560" y="70">GitHub Copilot in VS Code</text>
+        <text class="detail" x="560" y="92">Ctrl+Shift+P → MCP: Add Server</text>
+        <text class="detail" x="560" y="110">HTTP → paste the URL → atlassian → Workspace</text>
+
+        <path class="call" d="M750 124 V152" marker-end="url(#ah)"/>
+
+        <rect class="box-key" x="540" y="154" width="420" height="70" rx="6"/>
+        <text class="head" x="560" y="182">.vscode/mcp.json</text>
+        <text class="detail" x="560" y="204">key: servers · Global puts it in user mcp.json</text>
+
+        <path class="call" d="M750 224 V252" marker-end="url(#ah)"/>
+
+        <rect class="box" x="540" y="254" width="420" height="70" rx="6"/>
+        <text class="head" x="560" y="282">Start it, then use Agent mode</text>
+        <text class="detail" x="560" y="304">Start link in mcp.json · allow the sign-in</text>
+
+        <!-- converge on the server -->
+        <path class="call-ext" d="M250 324 C250 390, 430 370, 460 398" marker-end="url(#ah-ext)"/>
+        <path class="call-ext" d="M750 324 C750 390, 570 370, 540 398" marker-end="url(#ah-ext)"/>
+
+        <rect class="box-ext" x="290" y="400" width="420" height="70" rx="6"/>
+        <text class="head" x="500" y="428" text-anchor="middle">Atlassian sign-in in your browser</text>
+        <text class="detail ext" x="500" y="450" text-anchor="middle">mcp.atlassian.com/v2/mcp · pick anilkumarreddineni.atlassian.net</text>
+
+        <path class="call" d="M500 470 V496" marker-end="url(#ah)"/>
+
+        <rect class="box" x="290" y="498" width="420" height="50" rx="6"/>
+        <text class="head" x="500" y="528" text-anchor="middle">Jira and Confluence tools in Copilot</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i></i>A step you do</span>
+      <span><i class="key"></i>Where it's saved</span>
+      <span><i class="ext"></i>Atlassian's side</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>The two files</h2>
+    <p class="note">The entries look the same apart from the top-level key: <code>mcpServers</code> in Copilot CLI and <code>servers</code> in VS Code.</p>
+    <div class="pair">
+      <div class="file">
+        <div class="file-head"><h3>Copilot CLI</h3><span class="path">~/.copilot/mcp-config.json</span></div>
+<pre>{
+  "<mark>mcpServers</mark>": {
+    "atlassian": {
+      "type": "http",
+      "url": "https://mcp.atlassian.com/v2/mcp"
+    }
+  }
+}</pre>
+      </div>
+      <div class="file">
+        <div class="file-head"><h3>Copilot in VS Code</h3><span class="path">.vscode/mcp.json</span></div>
+<pre>{
+  "<mark>servers</mark>": {
+    "atlassian": {
+      "type": "http",
+      "url": "https://mcp.atlassian.com/v2/mcp"
+    }
+  }
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Commands to remember</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>To do this</th><th>Copilot CLI</th><th>Copilot in VS Code</th></tr></thead>
+        <tbody>
+          <tr><td>Add the server</td><td><code>/mcp add</code></td><td><code>MCP: Add Server</code></td></tr>
+          <tr><td>See all servers</td><td><code>/mcp show</code></td><td><code>MCP: List Servers</code></td></tr>
+          <tr><td>Remove it</td><td>Delete it from <code>mcp-config.json</code></td><td>Delete it from <code>mcp.json</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Keep in mind</h2>
+    <ul class="remember">
+      <li><strong>Copilot needs its own setup.</strong> Copilot doesn't read Claude Code's <code>~/.claude.json</code>, and Claude Code doesn't read Copilot's files.</li>
+      <li><strong>VS Code uses MCP tools only in Agent mode.</strong> Switch Copilot Chat to Agent mode to see the Atlassian tools.</li>
+      <li><strong>Workspace or Global.</strong> Workspace saves <code>.vscode/mcp.json</code>, which goes into git with the repo. Global keeps it to you.</li>
+      <li><strong>Use the same v2 URL.</strong> As with Claude Code, use <code>https://mcp.atlassian.com/v2/mcp</code> and pick your site at sign-in.</li>
+    </ul>
+  </section>
+</div>

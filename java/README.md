@@ -6,6 +6,10 @@ Architecture diagram: [architecture.html](architecture.html) (open it in a brows
 
 Tool calling diagram: [tool-calling.html](tool-calling.html), also online at https://claude.ai/artifact/R7BhjwaDELxBdibwtaZpNe. It shows how Claude learns about the MCP tools, the two Claude requests behind one order question, and what SYSTEM, USER, ASSISTANT and TOOL mean in the log.
 
+MCP configuration diagrams (how to add the Atlassian MCP server):
+- Claude Code: [claude-mcp-configuration.html](claude-mcp-configuration.html), also online at https://claude.ai/artifact/Fmcf1UaGvQ5dVnnGm7YVPJ. The CLI and the VS Code extension share `~/.claude.json`, so you add the server once.
+- GitHub Copilot: [copilot-mcp-configuration.html](copilot-mcp-configuration.html), also online at https://claude.ai/artifact/EPeeLsitpRr4wnioSmQTcW. Copilot CLI and Copilot in VS Code each keep their own config file, so you add it in both.
+
 | Service         | Port | Endpoints                                                       |
 |-----------------|------|-----------------------------------------------------------------|
 | `mcp-server`    | 8080 | `GET /hello`, MCP (Streamable HTTP) at `/mcp`                   |

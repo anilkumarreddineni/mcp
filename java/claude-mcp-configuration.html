@@ -1,0 +1,193 @@
+<title>Adding MCP to Claude Code</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: same visual system as architecture.html and tool-calling.html; one simple diagram where the CLI and the VS Code extension meet at one shared file, then the file and the commands */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1b2330;
+  --muted: #5b6676;
+  --line: #8a95a5;
+  --rule: #dde2e9;
+  --accent: #2d5f8f;
+  --accent-soft: #e6eef7;
+  --external: #9a6412;
+  --external-soft: #fbf3e6;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161c; --surface: #1a2029; --fg: #e3e8ef; --muted: #9aa5b4; --line: #6d7887;
+    --rule: #2c3440; --accent: #7fb0e0; --accent-soft: #1d2b3b; --external: #e0aa58; --external-soft: #2a2216;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161c; --surface: #1a2029; --fg: #e3e8ef; --muted: #9aa5b4; --line: #6d7887;
+  --rule: #2c3440; --accent: #7fb0e0; --accent-soft: #1d2b3b; --external: #e0aa58; --external-soft: #2a2216;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+}
+.wrap { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+header { display: flex; flex-direction: column; gap: 8px; max-width: 70ch; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 70ch; }
+.lede a { color: var(--accent); }
+code { font-family: var(--font-mono); font-size: 0.88em; }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.note { color: var(--muted); font-size: 14px; max-width: 75ch; }
+
+.diagram { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; min-width: 820px; height: auto; }
+svg text { font-family: var(--font-body); fill: var(--fg); }
+svg .tag { font-family: var(--font-mono); font-size: 10.5px; fill: var(--muted); letter-spacing: 0.06em; }
+svg .head { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+svg .detail { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+svg .detail.ext { fill: var(--external); }
+svg .box { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; }
+svg .box-key { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+svg .box-ext { fill: var(--external-soft); stroke: var(--external); stroke-width: 1.5; stroke-dasharray: 6 4; }
+svg .call { stroke: var(--line); stroke-width: 1.5; fill: none; }
+svg .call-ext { stroke: var(--external); stroke-width: 1.5; fill: none; }
+svg .arrow { fill: var(--line); }
+svg .arrow-ext { fill: var(--external); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { display: inline-block; width: 22px; height: 14px; border: 1.5px solid var(--accent); border-radius: 3px; background: var(--surface); }
+.legend i.key { background: var(--accent-soft); border-width: 2px; }
+.legend i.ext { border-color: var(--external); border-style: dashed; background: var(--external-soft); }
+
+.file { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; max-width: 560px; }
+.file-head { padding: 10px 16px; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+pre { margin: 0; padding: 14px 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; }
+pre mark { background: var(--accent-soft); color: var(--accent); font-weight: 500; border-radius: 3px; padding: 0 3px; }
+
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 16px; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; }
+
+.remember { display: flex; flex-direction: column; gap: 10px; margin: 0; padding-left: 20px; max-width: 80ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">MCP-11 · 1 of 2 · Claude Code</span>
+    <h1>Adding MCP to Claude Code</h1>
+    <p class="lede">The Claude Code CLI and the Claude Code extension for VS Code share one config file. Add the Atlassian server once, from either one, and it works in both. For GitHub Copilot, see <a href="https://claude.ai/artifact/EPeeLsitpRr4wnioSmQTcW">Adding MCP to GitHub Copilot</a>.</p>
+  </header>
+
+  <section>
+    <h2>Add once, use in both</h2>
+    <div class="diagram">
+      <svg viewBox="0 0 1000 560" role="img" aria-labelledby="dtitle">
+        <title id="dtitle">The Claude Code CLI and the VS Code extension both write to the same ~/.claude.json file. After one sign-in with Atlassian, the Jira and Confluence tools work in both.</title>
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="arrow" d="M0 0 L10 5 L0 10 z"/></marker>
+          <marker id="ah-ext" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="arrow-ext" d="M0 0 L10 5 L0 10 z"/></marker>
+        </defs>
+
+        <!-- two starting points -->
+        <rect class="box" x="40" y="24" width="430" height="100" rx="6"/>
+        <text class="tag" x="60" y="48">TERMINAL</text>
+        <text class="head" x="60" y="70">Claude Code CLI</text>
+        <text class="detail" x="60" y="92">claude mcp add --transport http atlassian \</text>
+        <text class="detail" x="60" y="110">  https://mcp.atlassian.com/v2/mcp -s user</text>
+
+        <rect class="box" x="530" y="24" width="430" height="100" rx="6"/>
+        <text class="tag" x="550" y="48">VS CODE</text>
+        <text class="head" x="550" y="70">Claude Code extension</text>
+        <text class="detail" x="550" y="92">Open VS Code's terminal (Ctrl+`) and</text>
+        <text class="detail" x="550" y="110">run the same claude mcp add command</text>
+
+        <!-- converge on the shared file -->
+        <path class="call" d="M255 124 C255 160, 430 150, 460 176" marker-end="url(#ah)"/>
+        <path class="call" d="M745 124 C745 160, 570 150, 540 176" marker-end="url(#ah)"/>
+
+        <rect class="box-key" x="290" y="178" width="420" height="70" rx="6"/>
+        <text class="head" x="500" y="206" text-anchor="middle">One shared file: ~/.claude.json</text>
+        <text class="detail" x="500" y="228" text-anchor="middle">-s user = available in every project</text>
+
+        <path class="call" d="M500 248 V276" marker-end="url(#ah)"/>
+
+        <rect class="box" x="290" y="278" width="420" height="70" rx="6"/>
+        <text class="head" x="500" y="306" text-anchor="middle">Restart, then /mcp → atlassian → Authenticate</text>
+        <text class="detail" x="500" y="328" text-anchor="middle">type /mcp in the CLI or in the extension's chat</text>
+
+        <path class="call-ext" d="M500 348 V376" marker-end="url(#ah-ext)"/>
+
+        <rect class="box-ext" x="290" y="378" width="420" height="70" rx="6"/>
+        <text class="head" x="500" y="406" text-anchor="middle">Atlassian sign-in in your browser</text>
+        <text class="detail ext" x="500" y="428" text-anchor="middle">mcp.atlassian.com/v2/mcp · pick anilkumarreddineni.atlassian.net</text>
+
+        <path class="call" d="M500 448 V476" marker-end="url(#ah)"/>
+
+        <rect class="box" x="290" y="478" width="420" height="62" rx="6"/>
+        <text class="head" x="500" y="504" text-anchor="middle">Jira and Confluence tools in both</text>
+        <text class="detail" x="500" y="524" text-anchor="middle">CLI and extension, no second setup</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i></i>A step you do</span>
+      <span><i class="key"></i>The file both read</span>
+      <span><i class="ext"></i>Atlassian's side</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>What gets saved</h2>
+    <p class="note">The command adds this entry at the top level of <code>~/.claude.json</code>. With <code>-s project</code> it goes in <code>.mcp.json</code> in the repo instead, so everyone who clones the repo gets it.</p>
+    <div class="file">
+      <div class="file-head">~/.claude.json</div>
+<pre>{
+  "<mark>mcpServers</mark>": {
+    "atlassian": {
+      "type": "http",
+      "url": "https://mcp.atlassian.com/v2/mcp"
+    }
+  }
+}</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Commands to remember</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>To do this</th><th>Run</th></tr></thead>
+        <tbody>
+          <tr><td>Add the server</td><td><code>claude mcp add --transport http atlassian https://mcp.atlassian.com/v2/mcp -s user</code></td></tr>
+          <tr><td>See all servers</td><td><code>claude mcp list</code>, or <code>/mcp</code> in a chat</td></tr>
+          <tr><td>Check one server</td><td><code>claude mcp get atlassian</code></td></tr>
+          <tr><td>Sign in again</td><td><code>/mcp</code> → atlassian → Authenticate</td></tr>
+          <tr><td>Remove it</td><td><code>claude mcp remove atlassian -s user</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Lessons from setting it up</h2>
+    <ul class="remember">
+      <li><strong>Use the v2 URL.</strong> <code>/v1/mcp</code> stops working on 2027-03-01. To switch, remove the server and add it again.</li>
+      <li><strong>Every site uses the same URL.</strong> You pick your site during the browser sign-in.</li>
+      <li><strong>Adding is not connecting.</strong> Until you restart and authenticate, tool calls fail with "needs you to sign in again".</li>
+      <li><strong>Changes apply after a restart.</strong> That goes for both the CLI and the extension.</li>
+    </ul>
+  </section>
+</div>
